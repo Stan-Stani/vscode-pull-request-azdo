@@ -12,7 +12,7 @@
 	},
 	"enableProposedApi": false,
 	"preview": true,
-	"version": "1.0.2",
+	"version": "1.0.3",
 	"publisher": "ankitbko",
 	"engines": {
 		"vscode": "^1.97.0"
@@ -665,7 +665,7 @@
 				{
 					"command": "azdoreview.openFile",
 					"group": "navigation",
-					"when": "resourceScheme =~ /^review$/"
+					"when": "resourceScheme =~ /^(review_azdo|pr_azdo)$/"
 				}
 			],
 			"scm/title": [

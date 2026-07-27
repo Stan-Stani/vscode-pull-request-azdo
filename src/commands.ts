@@ -671,7 +671,14 @@ export function registerCommands(
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand('azdoreview.openFile', (value: GitFileChangeNode | vscode.Uri) => {
-			const uri = value instanceof GitFileChangeNode ? value.filePath : value;
+			let uri = value instanceof GitFileChangeNode ? value.filePath : value;
+
+			// Diff documents use virtual schemes (pr_azdo/review_azdo) but keep the
+			// on-disk absolute path in uri.path — strip the scheme/query to open the
+			// real workspace file.
+			if (uri.scheme === URI_SCHEME_PR || uri.scheme === URI_SCHEME_REVIEW) {
+				uri = uri.with({ scheme: 'file', query: '' });
+			}
 
 			const activeTextEditor = vscode.window.activeTextEditor;
 			const opts: vscode.TextDocumentShowOptions = {
