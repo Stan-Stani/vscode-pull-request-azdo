@@ -550,6 +550,16 @@ export class PullRequestOverviewPanel extends WebviewBase {
 		}
 	}
 
+	private async openAllDiffs(message: IRequestMessage<void>): Promise<void> {
+		try {
+			await PullRequestModel.openAllDiffs(this._folderRepositoryManager, this._item);
+			this._replyMessage(message, {});
+		} catch (e) {
+			this._throwError(message, formatError(e));
+			vscode.window.showErrorMessage(`Could not open the changes. ${formatError(e)}`);
+		}
+	}
+
 	// Blob fetch for a single excerpt; a failure yields undefined so only that thread loses its
 	// excerpt rather than the whole timeline.
 	private async getFileContentOrUndefined(sha: string): Promise<string | undefined> {
@@ -608,6 +618,9 @@ export class PullRequestOverviewPanel extends WebviewBase {
 		}
 		if (message.command === 'pr.remove-label') {
 			return this.removeLabelFromPr(message);
+		}
+		if (message.command === 'pr.open-all-diffs') {
+			return this.openAllDiffs(message);
 		}
 		switch (message.command) {
 			case 'pr.checkout':

@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- **Open All Changes**: review every changed file of a PR in one scrollable editor, the way the Files tab works on Azure DevOps, instead of opening and closing one diff per file. Available from the "Open all changes" button on the PR page's Files tab, the PR row in the Pull Requests tree, the title bar of the changes view while a PR is checked out, and the command palette. Uses VS Code's built-in multi-diff editor; works with or without checking the PR out.
+- Fix: with a PR checked out, opening a deleted file's diff from the Files tab resolved its base side to the repository root instead of the deleted file, because Azure DevOps reports deleted files with an empty path.
+
 ## 2.9.0
 
 - The pull request overview page now shows which Azure DevOps project the PR belongs to ("wants to merge changes in `<project>` into `<base>` from `<head>`") - not obvious before when a linked work item lives in a different project than the repo.

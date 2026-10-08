@@ -1549,6 +1549,13 @@ code {
 	font-weight: 600;
 }
 
+.changed-files-actions {
+	display: flex;
+	align-items: center;
+	gap: var(--azdo-space-3);
+	font-weight: normal;
+}
+
 .changed-files-empty {
 	color: var(--vscode-descriptionForeground);
 	padding: var(--azdo-space-3);

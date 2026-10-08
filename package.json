@@ -416,6 +416,12 @@
 				"icon": "$(split-horizontal)"
 			},
 			{
+				"command": "azdopr.openAllDiffs",
+				"title": "Open All Changes",
+				"icon": "$(diff-multiple)",
+				"category": "AzDO Pull Requests"
+			},
+			{
 				"command": "azdopr.refreshDescription",
 				"title": "Refresh Pull Request Description",
 				"category": "AzDO Pull Requests"
@@ -685,6 +691,10 @@
 					"when": "false"
 				},
 				{
+					"command": "azdopr.openAllDiffs",
+					"when": "gitOpenRepositoryCount != 0 && azdo:inReviewMode"
+				},
+				{
 					"command": "azdopr.openDescription",
 					"when": "gitOpenRepositoryCount != 0 && azdo:inReviewMode"
 				},
@@ -769,6 +779,11 @@
 					"command": "azdopr.refreshChanges",
 					"when": "view == azdoprStatus:azdo",
 					"group": "navigation@2"
+				},
+				{
+					"command": "azdopr.openAllDiffs",
+					"when": "view == azdoprStatus:azdo",
+					"group": "navigation@1"
 				},
 				{
 					"command": "azdopr.openDashboardPage",
@@ -861,6 +876,16 @@
 					"command": "azdopr.copyVscodeDeepLink",
 					"when": "view == azdopr:azdo && viewItem =~ /pullrequest/",
 					"group": "inline"
+				},
+				{
+					"command": "azdopr.openAllDiffs",
+					"when": "view == azdopr:azdo && viewItem =~ /pullrequest/",
+					"group": "inline"
+				},
+				{
+					"command": "azdopr.openAllDiffs",
+					"when": "view == azdopr:azdo && viewItem =~ /pullrequest|description/",
+					"group": "pullrequest@2"
 				},
 				{
 					"command": "azdopr.deleteLocalBranch",

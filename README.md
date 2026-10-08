@@ -21,6 +21,7 @@ Works with git repositories on Azure DevOps Services (dev.azure.com). TFVC is no
 - Reference other **pull requests** with `!` autocomplete, and see related PRs that share a work item with the current one
 - Add and remove **labels** (Azure DevOps tags) on a PR from the sidebar
 - Find PRs **waiting on your review** in a dedicated list: active PRs where you are a reviewer and have not voted yet
+- **Review every changed file in one scrollable editor** (like the Files tab on Azure DevOps) with Open All Changes, with or without checking the PR out
 - **Share a PR**: copy its web URL, a link to a file's diff, or a `vscode://` deep link that opens the PR (and a specific file and line) in a teammate's VS Code
 
 ## See why a PR can't complete

@@ -258,6 +258,8 @@ export class PRContext {
 
 	public openFileDiff = (fileName: string) => this.postMessage({ command: 'pr.open-file-diff', args: { fileName } });
 
+	public openAllDiffs = () => this.postMessage({ command: 'pr.open-all-diffs' });
+
 	setPR = (pr: PullRequest) => {
 		this.pr = pr;
 		setState(this.pr);

@@ -37,6 +37,7 @@ const FileRow = ({ file }: { file: FileChangeSummary }) => {
 };
 
 export const ChangedFiles = ({ files }: { files?: FileChangeSummary[] }) => {
+	const { openAllDiffs } = useContext(PullRequestContext);
 	if (!files || files.length === 0) {
 		return <div className="changed-files-empty">No file changes to show.</div>;
 	}
@@ -47,9 +48,18 @@ export const ChangedFiles = ({ files }: { files?: FileChangeSummary[] }) => {
 		<div id="changed-files">
 			<div className="changed-files-summary">
 				{files.length} {files.length === 1 ? 'file' : 'files'} changed
-				<span className="file-stats">
-					<span className="additions">+{totalAdditions}</span>
-					<span className="deletions">-{totalDeletions}</span>
+				<span className="changed-files-actions">
+					<span className="file-stats">
+						<span className="additions">+{totalAdditions}</span>
+						<span className="deletions">-{totalDeletions}</span>
+					</span>
+					<button
+						className="secondary"
+						onClick={() => openAllDiffs()}
+						title="Open every changed file in one scrollable diff editor"
+					>
+						Open all changes
+					</button>
 				</span>
 			</div>
 			<div className="changed-files-list">

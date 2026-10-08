@@ -510,6 +510,24 @@ export function registerCommands(
 	);
 
 	context.subscriptions.push(
+		vscode.commands.registerCommand('azdopr.openAllDiffs', async (pr?: PullRequestArg) => {
+			const pullRequest = await resolveTargetPullRequest(reposManager, pr);
+			if (!pullRequest) {
+				return;
+			}
+			const folderManager = reposManager.getManagerForPullRequestModel(pullRequest);
+			if (!folderManager) {
+				return;
+			}
+			try {
+				await PullRequestModel.openAllDiffs(folderManager, pullRequest);
+			} catch (e) {
+				vscode.window.showErrorMessage(`Could not open the changes. ${formatError(e)}`);
+			}
+		}),
+	);
+
+	context.subscriptions.push(
 		vscode.commands.registerCommand('azdopr.deleteLocalBranch', async (e: PRNode) => {
 			const folderManager = reposManager.getManagerForPullRequestModel(e.pullRequestModel);
 			if (!folderManager) {

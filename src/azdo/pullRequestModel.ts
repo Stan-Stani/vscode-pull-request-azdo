@@ -1355,9 +1355,7 @@ export class PullRequestModel implements IPullRequestModel {
 		line?: number,
 	): Promise<void> {
 		const targetPath = filePath.startsWith('/') ? filePath : `/${filePath}`;
-		const fileChanges = await pullRequestModel.getFileChangesInfo();
-		const mergeBase = pullRequestModel.getDiffTarget();
-		const contentChanges = await parseDiffAzdo(fileChanges, folderManager.repository, mergeBase);
+		const { contentChanges, mergeBase } = await this.getContentChangesForDiff(folderManager, pullRequestModel);
 		const change = contentChanges.find(
 			fileChange => fileChange.fileName === targetPath || fileChange.previousFileName === targetPath,
 		);
@@ -1365,59 +1363,7 @@ export class PullRequestModel implements IPullRequestModel {
 			throw new Error(`Can't find the file '${targetPath}' in pull request ${pullRequestModel.getPullRequestId()}`);
 		}
 
-		let headUri, baseUri: vscode.Uri;
-		if (!pullRequestModel.equals(folderManager.activePullRequest)) {
-			// pr_azdo-scheme URIs (below) are served by InMemPRContentProvider, which only knows how
-			// to answer for a PR once something has registered a content resolver for its number. The
-			// PR tree normally does this on node expand (PRNode.getChildren), but opening a PR straight
-			// from the overview webview's Files Changed tab - without ever expanding it in the tree -
-			// skipped that step entirely, so the diff silently rendered blank. Register it here too.
-			this.registerRemoteFileContentProvider(folderManager, pullRequestModel, contentChanges);
-
-			const headCommit = pullRequestModel.head!.sha;
-			const fileName = change.status === GitChangeType.DELETE ? change.previousFileName! : change.fileName;
-			// Falls back to the head-side name for added files so the base URI stays resolvable (#109).
-			const parentFileName = change.previousFileName || fileName;
-			const headFilePath = path.resolve(folderManager.repository.rootUri.fsPath, removeLeadingSlash(fileName));
-			const parentFilePath = path.resolve(folderManager.repository.rootUri.fsPath, removeLeadingSlash(parentFileName));
-			headUri = toPRUriAzdo(
-				vscode.Uri.file(headFilePath),
-				pullRequestModel,
-				change.baseCommit,
-				headCommit,
-				fileName,
-				false,
-				change.status,
-			);
-			baseUri = toPRUriAzdo(
-				vscode.Uri.file(parentFilePath),
-				pullRequestModel,
-				change.baseCommit,
-				headCommit,
-				parentFileName,
-				true,
-				change.status,
-			);
-		} else {
-			const uri = vscode.Uri.file(
-				path.resolve(folderManager.repository.rootUri.fsPath, removeLeadingSlash(change.fileName)),
-			);
-
-			headUri =
-				change.status === GitChangeType.DELETE
-					? toReviewUri(uri, undefined, undefined, '', false, { base: false }, folderManager.repository.rootUri)
-					: uri;
-
-			baseUri = toReviewUri(
-				uri,
-				change.status === GitChangeType.RENAME ? change.previousFileName : change.fileName,
-				undefined,
-				change.status === GitChangeType.ADD ? '' : mergeBase,
-				false,
-				{ base: true },
-				folderManager.repository.rootUri,
-			);
-		}
+		const { baseUri, headUri } = this.getDiffUris(folderManager, pullRequestModel, change, mergeBase);
 
 		const opts: vscode.TextDocumentShowOptions = {};
 		if (line !== undefined && line > 0) {
@@ -1427,6 +1373,114 @@ export class PullRequestModel implements IPullRequestModel {
 
 		const pathSegments = targetPath.split('/');
 		vscode.commands.executeCommand('vscode.diff', baseUri, headUri, `${pathSegments.at(-1)} (Pull Request)`, opts);
+	}
+
+	/**
+	 * Open every changed file of the PR in one multi-diff editor, stacked so the reviewer scrolls
+	 * through all of them (like the Files tab on Azure DevOps) instead of opening one diff at a time.
+	 * Works whether or not the PR is checked out - the URIs are the same ones openDiffForFile uses.
+	 */
+	static async openAllDiffs(folderManager: FolderRepositoryManager, pullRequestModel: PullRequestModel): Promise<void> {
+		const { contentChanges, mergeBase } = await this.getContentChangesForDiff(folderManager, pullRequestModel);
+		const prNumber = pullRequestModel.getPullRequestId();
+		if (contentChanges.length === 0) {
+			vscode.window.showInformationMessage(`Pull request #${prNumber} has no file changes to show.`);
+			return;
+		}
+
+		const resources = contentChanges.map(change => {
+			const { baseUri, headUri } = this.getDiffUris(folderManager, pullRequestModel, change, mergeBase);
+			const fileName = change.status === GitChangeType.DELETE ? change.previousFileName! : change.fileName;
+			// The first URI is only the entry's label/"open file" target. Leaving a side undefined renders
+			// the file as wholly added/deleted instead of diffing it against an empty document.
+			return [
+				vscode.Uri.file(path.resolve(folderManager.repository.rootUri.fsPath, removeLeadingSlash(fileName))),
+				change.status === GitChangeType.ADD ? undefined : baseUri,
+				change.status === GitChangeType.DELETE ? undefined : headUri,
+			];
+		});
+
+		await vscode.commands.executeCommand(
+			'vscode.changes',
+			`Pull Request #${prNumber}: ${pullRequestModel.item.title ?? ''}`,
+			resources,
+		);
+	}
+
+	private static async getContentChangesForDiff(
+		folderManager: FolderRepositoryManager,
+		pullRequestModel: PullRequestModel,
+	): Promise<{ contentChanges: (InMemFileChange | SlimFileChange)[]; mergeBase: string }> {
+		const fileChanges = await pullRequestModel.getFileChangesInfo();
+		const mergeBase = pullRequestModel.getDiffTarget();
+		const contentChanges = await parseDiffAzdo(fileChanges, folderManager.repository, mergeBase);
+		if (!pullRequestModel.equals(folderManager.activePullRequest)) {
+			// pr_azdo-scheme URIs (getDiffUris) are served by InMemPRContentProvider, which only knows how
+			// to answer for a PR once something has registered a content resolver for its number. The
+			// PR tree normally does this on node expand (PRNode.getChildren), but opening a PR straight
+			// from the overview webview's Files Changed tab - without ever expanding it in the tree -
+			// skipped that step entirely, so the diff silently rendered blank. Register it here too.
+			this.registerRemoteFileContentProvider(folderManager, pullRequestModel, contentChanges);
+		}
+		return { contentChanges, mergeBase };
+	}
+
+	/**
+	 * Base/head URIs for one file's diff: pr_azdo URIs for a PR that isn't checked out, and the
+	 * working-tree file against a review_azdo base for the checked-out one.
+	 */
+	private static getDiffUris(
+		folderManager: FolderRepositoryManager,
+		pullRequestModel: PullRequestModel,
+		change: InMemFileChange | SlimFileChange,
+		mergeBase: string,
+	): { baseUri: vscode.Uri; headUri: vscode.Uri } {
+		// AzDO reports a deleted file with an empty path; its name is only in previousFileName.
+		const fileName = change.status === GitChangeType.DELETE ? change.previousFileName! : change.fileName;
+		if (!pullRequestModel.equals(folderManager.activePullRequest)) {
+			const headCommit = pullRequestModel.head!.sha;
+			// Falls back to the head-side name for added files so the base URI stays resolvable (#109).
+			const parentFileName = change.previousFileName || fileName;
+			const headFilePath = path.resolve(folderManager.repository.rootUri.fsPath, removeLeadingSlash(fileName));
+			const parentFilePath = path.resolve(folderManager.repository.rootUri.fsPath, removeLeadingSlash(parentFileName));
+			return {
+				headUri: toPRUriAzdo(
+					vscode.Uri.file(headFilePath),
+					pullRequestModel,
+					change.baseCommit,
+					headCommit,
+					fileName,
+					false,
+					change.status,
+				),
+				baseUri: toPRUriAzdo(
+					vscode.Uri.file(parentFilePath),
+					pullRequestModel,
+					change.baseCommit,
+					headCommit,
+					parentFileName,
+					true,
+					change.status,
+				),
+			};
+		}
+
+		const uri = vscode.Uri.file(path.resolve(folderManager.repository.rootUri.fsPath, removeLeadingSlash(fileName)));
+		return {
+			headUri:
+				change.status === GitChangeType.DELETE
+					? toReviewUri(uri, undefined, undefined, '', false, { base: false }, folderManager.repository.rootUri)
+					: uri,
+			baseUri: toReviewUri(
+				uri,
+				change.status === GitChangeType.RENAME ? change.previousFileName : fileName,
+				undefined,
+				change.status === GitChangeType.ADD ? '' : mergeBase,
+				false,
+				{ base: true },
+				folderManager.repository.rootUri,
+			),
+		};
 	}
 
 	// Mirrors PRNode.resolveFileChanges/provideDocumentContent (pullRequestNode.ts) for the case where
