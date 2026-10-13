@@ -7,7 +7,7 @@ import { FolderRepositoryManager } from '../../azdo/folderRepositoryManager';
 import { IRawFileChange } from '../../azdo/interface';
 import { PullRequestModel } from '../../azdo/pullRequestModel';
 import { fromPRUri, fromReviewUri } from '../../common/uri';
-import { URI_SCHEME_PR, URI_SCHEME_REVIEW } from '../../constants';
+import { SETTINGS_NAMESPACE, URI_SCHEME_PR, URI_SCHEME_REVIEW } from '../../constants';
 
 type ChangesResource = [vscode.Uri, vscode.Uri | undefined, vscode.Uri | undefined];
 
@@ -80,8 +80,11 @@ describe('PullRequestModel.openAllDiffs', function () {
 		};
 	});
 
-	afterEach(function () {
+	afterEach(async function () {
 		sinon.restore();
+		await vscode.workspace
+			.getConfiguration(SETTINGS_NAMESPACE)
+			.update('openAllChanges.testFilesLast', undefined, vscode.ConfigurationTarget.Global);
 	});
 
 	it('opens every changed file, labelled by its workspace path', async function () {
@@ -125,6 +128,37 @@ describe('PullRequestModel.openAllDiffs', function () {
 
 		assert.equal(fromReviewUri(renamed[1]!).path, '/src/original.ts');
 		assert.equal(renamed[2]?.fsPath, '/repo/src/renamed.ts');
+	});
+
+	describe('with test files in the PR', function () {
+		beforeEach(function () {
+			pullRequest = fakePullRequest([
+				rawChange(VersionControlChangeType.Edit, '/src/a.test.ts', '/src/a.test.ts'),
+				rawChange(VersionControlChangeType.Edit, '/src/a.ts', '/src/a.ts'),
+				rawChange(VersionControlChangeType.Delete, '', '/Api.Tests/OldTests.cs'),
+				rawChange(VersionControlChangeType.Add, '/src/b.ts'),
+			]);
+		});
+
+		it('keeps the PR order by default', async function () {
+			const resources = await openAll();
+			assert.deepEqual(
+				resources.map(([label]) => label.fsPath),
+				['/repo/src/a.test.ts', '/repo/src/a.ts', '/repo/Api.Tests/OldTests.cs', '/repo/src/b.ts'],
+			);
+		});
+
+		it('lists test files last, in PR order, when openAllChanges.testFilesLast is on', async function () {
+			await vscode.workspace
+				.getConfiguration(SETTINGS_NAMESPACE)
+				.update('openAllChanges.testFilesLast', true, vscode.ConfigurationTarget.Global);
+
+			const resources = await openAll();
+			assert.deepEqual(
+				resources.map(([label]) => label.fsPath),
+				['/repo/src/a.ts', '/repo/src/b.ts', '/repo/src/a.test.ts', '/repo/Api.Tests/OldTests.cs'],
+			);
+		});
 	});
 
 	it('shows a message instead of an empty editor when the PR has no changes', async function () {

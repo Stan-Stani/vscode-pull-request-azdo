@@ -61,6 +61,7 @@ import { IReviewThread, ViewedState } from '../common/comment';
 import { parseDiffAzdo } from '../common/diffHunk';
 import { GitChangeType, InMemFileChange, SlimFileChange } from '../common/file';
 import { GitHubRef } from '../common/githubRef';
+import { globToRegExp } from '../common/glob';
 import Logger from '../common/logger';
 import { Remote } from '../common/remote';
 import { ITelemetry } from '../common/telemetry';
@@ -1388,7 +1389,7 @@ export class PullRequestModel implements IPullRequestModel {
 			return;
 		}
 
-		const resources = contentChanges.map(change => {
+		const resources = this.orderForOpenAll(contentChanges).map(change => {
 			const { baseUri, headUri } = this.getDiffUris(folderManager, pullRequestModel, change, mergeBase);
 			const fileName = change.status === GitChangeType.DELETE ? change.previousFileName! : change.fileName;
 			// The first URI is only the entry's label/"open file" target. Leaving a side undefined renders
@@ -1405,6 +1406,25 @@ export class PullRequestModel implements IPullRequestModel {
 			`Pull Request #${prNumber}: ${pullRequestModel.item.title ?? ''}`,
 			resources,
 		);
+	}
+
+	/**
+	 * With openAllChanges.testFilesLast on, moves test files after the rest, otherwise keeping AzDO's
+	 * order. Reordering stands in for collapsing them, which the multi-diff editor gives extensions
+	 * no way to do per file.
+	 */
+	private static orderForOpenAll<T extends InMemFileChange | SlimFileChange>(changes: T[]): T[] {
+		const config = vscode.workspace.getConfiguration(SETTINGS_NAMESPACE);
+		if (!config.get<boolean>('openAllChanges.testFilesLast', false)) {
+			return changes;
+		}
+		const testPatterns = config.get<string[]>('openAllChanges.testFilePatterns', []).map(glob => globToRegExp(glob));
+		const isTest = (change: T): boolean => {
+			const fileName = change.status === GitChangeType.DELETE ? change.previousFileName! : change.fileName;
+			const repoPath = removeLeadingSlash(fileName);
+			return testPatterns.some(pattern => pattern.test(repoPath));
+		};
+		return [...changes.filter(change => !isTest(change)), ...changes.filter(change => isTest(change))];
 	}
 
 	private static async getContentChangesForDiff(

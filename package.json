@@ -193,6 +193,24 @@
 					"default": "tree",
 					"description": "The layout to use when displaying changed files list."
 				},
+				"azdoPullRequests.openAllChanges.testFilesLast": {
+					"type": "boolean",
+					"default": false,
+					"markdownDescription": "When true, **Open All Changes** lists test files (those matching `#azdoPullRequests.openAllChanges.testFilePatterns#`) after every other changed file, so the code under review comes first. VS Code's multi-diff editor offers no way for an extension to collapse individual files, so this reorders instead."
+				},
+				"azdoPullRequests.openAllChanges.testFilePatterns": {
+					"type": "array",
+					"items": {
+						"type": "string"
+					},
+					"default": [
+						"**/*.{test,spec}.*",
+						"**/{test,tests,__tests__,__mocks__}/**",
+						"**/*.Tests/**",
+						"**/*.Tests.*/**"
+					],
+					"markdownDescription": "Glob patterns, matched against repository-relative paths, that identify test files for `#azdoPullRequests.openAllChanges.testFilesLast#`. Supports `**`, `*`, `?` and `{a,b}`."
+				},
 				"azdoPullRequests.defaultDeletionMethod.selectLocalBranch": {
 					"type": "boolean",
 					"default": true,

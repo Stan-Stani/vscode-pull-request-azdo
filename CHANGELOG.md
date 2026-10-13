@@ -3,6 +3,7 @@
 ## Unreleased
 
 - **Open All Changes**: review every changed file of a PR in one scrollable editor, the way the Files tab works on Azure DevOps, instead of opening and closing one diff per file. Available from the "Open all changes" button on the PR page's Files tab, the PR row in the Pull Requests tree, the title bar of the changes view while a PR is checked out, and the command palette. Uses VS Code's built-in multi-diff editor; works with or without checking the PR out.
+- New setting `azdoPullRequests.openAllChanges.testFilesLast` (off by default) lists test files after the rest in Open All Changes, so the code under review comes first. What counts as a test file is configurable with `azdoPullRequests.openAllChanges.testFilePatterns`.
 - Fix: with a PR checked out, opening a deleted file's diff from the Files tab resolved its base side to the repository root instead of the deleted file, because Azure DevOps reports deleted files with an empty path.
 
 ## 2.9.0
