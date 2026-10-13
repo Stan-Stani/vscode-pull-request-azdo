@@ -80,13 +80,18 @@ async function chooseItem<T>(
  * DescriptionNode arg), directly (PullRequestModel arg), or from the command palette with no arg
  * (falls back to the checked-out PR across all folder managers).
  */
-async function resolveTargetPullRequest(
+export async function resolveTargetPullRequest(
 	reposManager: RepositoriesManager,
 	pr?: PullRequestArg,
 ): Promise<PullRequestModel | undefined> {
-	if (pr) {
-		return pr instanceof PRNode || pr instanceof DescriptionNode ? pr.pullRequestModel : pr;
+	if (pr instanceof PRNode || pr instanceof DescriptionNode) {
+		return pr.pullRequestModel;
 	}
+	if (pr instanceof PullRequestModel) {
+		return pr;
+	}
+	// Any other argument says nothing about the PR - e.g. a view's title-bar button receives that
+	// view's focused tree item, which in the changes view is a file node - so treat it as no argument.
 	const activePullRequests: PullRequestModel[] = reposManager.folderManagers
 		.map(folderManager => folderManager.activePullRequest!)
 		.filter(activePR => !!activePR);
