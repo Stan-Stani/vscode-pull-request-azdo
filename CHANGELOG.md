@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Fix: with several windows open, every window raised its own "wants to sign in using Microsoft" modal at startup whenever the cached sign-in could not be refreshed silently (e.g. after MFA expired), then an "Error signing in - Try again?" notification - and a transient startup failure (such as `connectionData` timing out before the network is up) showed that error in each window, where "Try again" forced a brand-new browser sign-in even though the session was still valid. Background sign-ins (activation, token expiry, session changes) no longer prompt: VS Code adds a sign-in entry to the Accounts menu instead, and only the Sign in command or "Try again" opens a prompt. A signed-out window now checks again for a usable session when it regains focus and once a minute after a failed sign-in, so signing in once in any window recovers the others - re-authenticating an existing account updates the shared token cache but fires no session-change event in other windows. The Sign in command reuses a still-valid session instead of always forcing a new one.
+
 ## 2.9.0
 
 - The pull request overview page now shows which Azure DevOps project the PR belongs to ("wants to merge changes in `<project>` into `<base>` from `<head>`") - not obvious before when a linked work item lives in a different project than the repo.
