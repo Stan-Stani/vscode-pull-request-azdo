@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Fix: after Checkout, the Changes In Pull Request view could show some folders empty until Refresh was clicked. Setting the review-mode context reveals the view and starts its load, and the full refresh fired right after cancelled VS Code's in-flight child fetches; the refresh now fires before the view is revealed.
+
 ## 2.9.0
 
 - The pull request overview page now shows which Azure DevOps project the PR belongs to ("wants to merge changes in `<project>` into `<base>` from `<head>`") - not obvious before when a linked work item lives in a different project than the repo.
