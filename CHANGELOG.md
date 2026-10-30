@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Fix: after Checkout, the Changes In Pull Request view could show some folders empty until Refresh was clicked. Setting the review-mode context reveals the view and starts its load, and the full refresh fired right after cancelled VS Code's in-flight child fetches; the refresh now fires before the view is revealed.
+- Fix: when checking out an existing local branch failed (e.g. local changes in the way), Checkout fell through to creating the branch and reported `a branch named '...' already exists`, hiding the real error. Only a missing local branch now leads to creating one.
 
 ## 2.9.0
 
